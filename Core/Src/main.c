@@ -15,6 +15,11 @@
  *
  ******************************************************************************
  */
+/*
+ * AD840X系列数字电位器驱动库
+ * 雪豹  编写
+ * 说明在AD840X.h文件中
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -23,7 +28,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "AD840X.h"
+#include "AD840X.h" //引入AD840X驱动库
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -89,10 +94,10 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  // 初始化AD840X数字电位器
-  AD840X_Init();
+
+  AD840X_Init();                                    // 初始化AD840X数字电位器
   uint8_t resistance_value = 0;                     // 电阻值从0开始
-  AD840X_Write(AD840X_CHANNEL_B, resistance_value); // 初始化电阻值为0
+  AD840X_Write(AD840X_CHANNEL_2, resistance_value); // 初始化电阻值为0
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -113,7 +118,7 @@ int main(void)
     }
 
     // 设置新的电阻值
-    AD840X_Write(AD840X_CHANNEL_B, resistance_value);
+    AD840X_Write(AD840X_CHANNEL_2, resistance_value);
 
     // 延时2秒
     HAL_Delay(2000);

@@ -10,11 +10,11 @@ void AD840X_Init(void)
     // 初始化时将CS引脚拉高
     HAL_GPIO_WritePin(AD840X_CS_GPIO_Port, AD840X_CS_Pin, GPIO_PIN_SET);
 
-    // 初始化4个通道为中间值（128）
-    AD840X_Write(AD840X_CHANNEL_A, 128);
-    AD840X_Write(AD840X_CHANNEL_B, 128);
-    AD840X_Write(AD840X_CHANNEL_C, 128);
-    AD840X_Write(AD840X_CHANNEL_D, 128);
+    // // 初始化4个通道为中间值（128）
+    // AD840X_Write(AD840X_CHANNEL_A, 128);
+    // AD840X_Write(AD840X_CHANNEL_B, 128);
+    // AD840X_Write(AD840X_CHANNEL_C, 128);
+    // AD840X_Write(AD840X_CHANNEL_D, 128);
 }
 
 /*
@@ -35,10 +35,10 @@ void AD840X_Write(uint8_t channel, uint8_t value)
 
     /* CS拉低（满足tCSS >10ns，Page10 Table4）*/
     HAL_GPIO_WritePin(AD840X_CS_GPIO_Port, AD840X_CS_Pin, GPIO_PIN_RESET);
-
+    HAL_Delay(1); // 等待CS拉低稳定
     /* SPI传输（CPOL=0/CPHA=0，依据Page10 Figure3时序）*/
     HAL_SPI_Transmit(&hspi1, tx_data, 2, HAL_MAX_DELAY);
-
+    HAL_Delay(1); // 等待CS拉高稳定
     /* CS拉高（满足tCSW >10ns，Page10 Table4）*/
     HAL_GPIO_WritePin(AD840X_CS_GPIO_Port, AD840X_CS_Pin, GPIO_PIN_SET);
 }

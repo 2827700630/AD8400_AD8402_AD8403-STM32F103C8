@@ -59,9 +59,9 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -91,26 +91,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   // 初始化AD840X数字电位器
   AD840X_Init();
-
-  // 设置AD840X两个通道的电阻值
-  //  AD840X_Write(AD840X_CHANNEL_A, 0b11110000); // 设置通道A
-  //  AD840X_Write(AD840X_CHANNEL_B, 0b00000000); // 设置通道B
-  uint8_t tx_data[2];
-  /* 数据包构造（Table6 Page11）*/
-  tx_data[0] = 0b00000001; // 地址位在Bit9-Bit8（两位）
-  tx_data[1] = 0b11100000;   // 数据位在Bit7-Bit0
-  /* CS拉低（满足tCSS >10ns，Page10 Table4）*/
-  HAL_GPIO_WritePin(AD840X_CS_GPIO_Port, AD840X_CS_Pin, GPIO_PIN_RESET);
-
-  HAL_Delay(1);
-
-  /* SPI传输（CPOL=0/CPHA=0，依据Page10 Figure3时序）*/
-  HAL_SPI_Transmit(&hspi1, tx_data, 2, HAL_MAX_DELAY);
-  HAL_Delay(1); // 等待CS拉高稳定
-
-  /* CS拉高（满足tCSW >10ns，Page10 Table4）*/
-  HAL_GPIO_WritePin(AD840X_CS_GPIO_Port, AD840X_CS_Pin, GPIO_PIN_SET);
-  
+  uint8_t resistance_value = 0;                     // 电阻值从0开始
+  AD840X_Write(AD840X_CHANNEL_B, resistance_value); // 初始化电阻值为0
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -121,8 +103,20 @@ int main(void)
     // 控制LED指示灯闪烁
     HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 
-    // 延时500ms
-    HAL_Delay(500);
+    // 每2秒增加一次电阻值
+    resistance_value += 4; // 每次增加4个单位，您可以根据需要调整步长
+
+    // 如果达到最大值则重新从0开始
+    if (resistance_value > 255)
+    {
+      resistance_value = 0;
+    }
+
+    // 设置新的电阻值
+    AD840X_Write(AD840X_CHANNEL_B, resistance_value);
+
+    // 延时2秒
+    HAL_Delay(2000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -131,17 +125,17 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -155,9 +149,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -174,9 +167,9 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -188,14 +181,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */

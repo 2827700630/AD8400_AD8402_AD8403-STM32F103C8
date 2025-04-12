@@ -129,10 +129,47 @@ extern "C"
 #define AD840X_CHANNEL_4 0b00000011 // 通道4，只有AD8403有通道4
 
     /* 函数声明 */
-    void AD840X_Init(void);
+
+    void AD840X_Init(SPI_HandleTypeDef *hspi);
     void AD840X_Write(uint8_t channel, uint8_t value);
+
+    /**
+     * @brief  使用DMA方式写入AD840X
+     * @param  channel: 通道地址（2位）
+     * @param  value: 8位电阻值（0-255）
+     * @note   使用DMA方式时，需要在STM32CubeMX中配置SPI的DMA传输
+     * @retval None
+     */
+    void AD840X_Write_DMA(uint8_t channel, uint8_t value);
+
+    /**
+     * @brief  通过RS引脚复位所有通道到中间值
+     * @param  None
+     * @note   时序需满足tRS≥50ns（Page10 Table4）
+     * @ref    Page12 Pin Descriptions, Page20 Programming
+     */
+    void AD840X_Reset(void);
+
+    /**
+     * @brief  控制SHDN引脚进入/退出低功耗模式
+     * @param  state: 0-进入断电模式，1-恢复正常模式
+     * @note   仅AD8402/AD8403有效，AD8400需忽略此函数
+     * @ref    Page12 Pin Descriptions, Page20 Theory of Operation
+     */
+    void AD840X_Shutdown(uint8_t state);
 
 #ifdef __cplusplus
 }
 #endif
 #endif /* __AD840X_H */
+       /*
+        *             /\_____/\
+        *            /  o   o  \
+        *           ( ==  ^  == )
+        *            )         (
+        *           (           )
+        *          ( (  )   (  ) )
+        *         (__(__)___(__)__)
+        *
+        *            雪豹  编写
+        */

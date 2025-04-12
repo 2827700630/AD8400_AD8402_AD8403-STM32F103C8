@@ -63,7 +63,7 @@ void Error_Handler(void);
 #define AD840X_CS_GPIO_Port GPIOB
 #define AD840X_SHDN_Pin GPIO_PIN_1
 #define AD840X_SHDN_GPIO_Port GPIOB
-#define AD840X_RS_Pin GPIO_PIN_2
+#define AD840X_RS_Pin GPIO_PIN_10
 #define AD840X_RS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */

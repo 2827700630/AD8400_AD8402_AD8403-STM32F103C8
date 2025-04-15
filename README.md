@@ -6,9 +6,21 @@
 ## 基本信息
 
 - **项目名称**: AD8400/AD8402/AD8403 数字电位器驱动库
-- **适用芯片**: STM32F103C8
+- **例程使用芯片**: STM32F103C8（可以方便移植到其他STM32芯片，见AD840X.h）
 - **开发环境**: STM32CubeIDE / VSCode
 - **作者**: 雪豹
+- **版本**: 2.0
+
+## 更新记录
+
+- **2025.4.15 v2.0**:
+  - 新增多设备支持，可同时控制多个AD840X器件
+  - 添加引脚未连接检测和编译警告
+  - 重构代码，使用结构体管理设备状态
+  - 优化条件逻辑，使代码更易读
+
+- **2025.4.7 v1.0**:
+  - 首次发布，支持单设备控制
 
 ## 硬件支持
 
@@ -26,6 +38,7 @@
    - 支持DMA传输方式
 
 2. **特殊功能**:
+   - 多设备支持，可同时控制多个AD840X器件
    - 自动检测DMA状态并选择最佳传输方式
    - 支持硬件复位(通过RS引脚)
    - 支持低功耗模式控制(通过SHDN引脚)
@@ -34,6 +47,7 @@
    - 代码注释丰富，符合doxygen标准
    - 引脚配置说明详细
    - 时序控制符合数据手册要求
+   - 提供编译期警告，确保引脚正确连接
 
 ## 硬件配置
 
@@ -51,19 +65,24 @@
 
 3. DMA配置(可选):
    - 如需DMA传输，为SPI添加TX DMA
+   - DMA Request: SPI1_TX
+   - Direction: Memory To Peripheral
+   - Mode: 选择 Normal (单次传输，推荐用于电位器应用)
 
 #### GPIO配置
-1. **CS引脚**:
+1. **CS引脚** (必须):
    - 模式: Output Push-Pull
-   - 用户标签: AD840X_CS
+   - 用户标签: AD840X_CS1, AD840X_CS2, ... (多设备时需定义多个)
 
-2. **SHDN引脚** (仅AD8402/AD8403):
+2. **SHDN引脚** (可选，仅AD8402/AD8403有此引脚):
    - 模式: Output Push-Pull
-   - 用户标签: AD840X_SHDN
+   - 用户标签: AD840X_SHDN1, AD840X_SHDN2, ...
+   - 注意: 未连接到STM32时，必须外部上拉至VDD
 
-3. **RS引脚** (仅AD8402/AD8403):
+3. **RS引脚** (可选，仅AD8402/AD8403有此引脚):
    - 模式: Output Push-Pull
-   - 用户标签: AD840X_RS
+   - 用户标签: AD840X_RS1, AD840X_RS2, ...
+   - 注意: 未连接到STM32时，必须外部上拉至VDD
 
 ### 硬件连接
 
@@ -73,9 +92,9 @@ STM32 <---> AD840X
 SPI_SCK  --> CLK
 SPI_MOSI --> SDI
 SPI_MISO <-- SDO (仅AD8403需要，需4.7kΩ上拉)
-GPIO     --> CS (AD840X_CS)
-GPIO     --> SHDN (AD840X_SHDN, 可选)
-GPIO     --> RS (AD840X_RS, 可选)
+GPIO     --> CS  (每个设备需要一个独立的CS引脚)
+GPIO     --> SHDN (可选，未连接需上拉)
+GPIO     --> RS (可选，未连接需上拉)
 ```
 
 ## 软件使用方法
@@ -87,24 +106,36 @@ GPIO     --> RS (AD840X_RS, 可选)
 #include "AD840X.h"
 ```
 
+定义设备句柄:
+```c
+// 定义多个设备句柄
+AD840X_HandleTypeDef hAD840X_1;  // 第一个设备
+AD840X_HandleTypeDef hAD840X_2;  // 第二个设备
+```
+
 初始化函数:
 ```c
-// 在main函数中调用初始化函数
-AD840X_Init(&hspi1); // 参数为SPI句柄
+// 初始化第一个设备
+AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS1_GPIO_Port, AD840X_CS1_Pin);
+AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin,
+                  AD840X_RS1_GPIO_Port, AD840X_RS1_Pin);
+
+// 初始化第二个设备
+AD840X_Init(&hAD840X_2, &hspi1, AD840X_CS2_GPIO_Port, AD840X_CS2_Pin);
+
+// 初始化不带SHDN和RS的设备（这些引脚必须外部上拉至VDD）
+AD840X_Init(&hAD840X_3, &hspi1, AD840X_CS3_GPIO_Port, AD840X_CS3_Pin);
 ```
 
 ### 2. 基本控制
 
 设置通道阻值:
 ```c
-// 设置通道1阻值为128 (50%)
-AD840X_Write(AD840X_CHANNEL_1, 128);
+// 设置第一个设备的通道1阻值为128 (50%)
+AD840X_Write(&hAD840X_1, AD840X_CHANNEL_1, 128);
 
-// 设置通道2阻值为255 (最大阻值100%)
-AD840X_Write(AD840X_CHANNEL_2, 255);
-
-// 设置通道3阻值为0 (最小阻值0%)
-AD840X_Write(AD840X_CHANNEL_3, 0);
+// 设置第二个设备的通道2阻值为255 (最大阻值100%)
+AD840X_Write(&hAD840X_2, AD840X_CHANNEL_2, 255);
 ```
 
 ### 3. 特殊功能
@@ -112,42 +143,44 @@ AD840X_Write(AD840X_CHANNEL_3, 0);
 #### 硬件复位
 将所有通道重置为中间值(128):
 ```c
-AD840X_Reset();
+// 使用RS引脚重置第一个设备
+AD840X_Reset(&hAD840X_1);
+
+// 使用SPI命令重置未连接RS引脚的设备
+AD840X_Reset(&hAD840X_3);  // 自动使用SPI命令写入中间值
 ```
 
 #### 低功耗控制
 ```c
-// 进入低功耗模式
-AD840X_Shutdown(0);
+// 第一个设备进入低功耗模式
+AD840X_Shutdown(&hAD840X_1, 0);
 
-// 退出低功耗模式
-AD840X_Shutdown(1);
+// 第一个设备退出低功耗模式
+AD840X_Shutdown(&hAD840X_1, 1);
+
+// 未连接SHDN引脚的设备将无法控制低功耗模式
+AD840X_Shutdown(&hAD840X_3, 0); // 无效，会产生编译警告
 ```
 
-### 4. DMA传输
+### 4. 自动DMA传输
 
-自动DMA模式:
 ```c
 // 初始化时自动检测DMA配置
-// 使用标准函数即可
-AD840X_Write(AD840X_CHANNEL_1, 128); // 自动选择传输方式
-```
-
-手动DMA传输:
-```c
-// 如需显式指定DMA传输模式
-AD840X_Write_DMA(AD840X_CHANNEL_1, 128);
+// 使用标准函数即可，会根据设备句柄中的use_dma标志自动选择传输方式
+AD840X_Write(&hAD840X_1, AD840X_CHANNEL_1, 128); // 自动选择传输方式
 ```
 
 ## 注意事项
 
 1. **硬件连接**:
-   - SHDN和RS引脚不能悬空，未使用时需接高电平
+   - 每个设备需要单独的CS引脚
+   - SHDN和RS引脚不能悬空，未连接STM32时必须接高电平
+   - 未连接引脚的情况会在编译时发出警告
    - 确保AGND与DGND单点连接
 
 2. **使用DMA时**:
    - CS引脚在DMA传输完成回调中自动控制
-   - 请确保正确配置CubeMX中的DMA设置
+   - 无需手动配置DMA完成回调
 
 3. **未使用通道**:
    - 将Ax/Bx接地，Wx悬空
@@ -169,3 +202,7 @@ AD840X_Write_DMA(AD840X_CHANNEL_1, 128);
 3. **DMA传输问题**:
    - 确认正确配置了DMA通道
    - 检查TX完成回调是否正常工作
+
+4. **编译警告**:
+   - 如果看到关于SHDN或RS引脚的警告，请确保这些引脚已连接到高电平
+   - 只有在使用相关功能时才会显示警告，如不需要低功耗控制功能则可忽略SHDN相关警告

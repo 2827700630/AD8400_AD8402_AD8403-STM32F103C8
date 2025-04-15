@@ -1,6 +1,6 @@
 /*
  * AD840X系列数字电位器驱动库
- * 雪豹  编写
+ * 雪豹  编写   github.com/2827700630
  * 型号支持：AD8400（1通道）、AD8402（2通道）、AD8403（4通道）
  * 数据手册：AD8400_8402_8403.pdf Rev.E
  */
@@ -32,7 +32,7 @@
  * 数据手册参考：Page10 Timing Diagrams, Page12-13 Pin Descriptions
  * [步骤1] SPI外设配置
  * ---------------------------------------------------------
- * 1. 选择SPI接口（如SPI1）
+ * 1. 选择SPI接口（比如SPI1）
  * 2. 参数设置：
  *    - Mode: Full-Duplex Master  (全双工主机模式，当然不接收数据可以选择Transmit Only Master)
  *    - Data Size: 8 bits         (数据手册Page10 Table6)
@@ -41,11 +41,19 @@
  *    （对应SPI Mode 0，符合Page10 Figure3时序）
  *    - NSS Signal: Disable       (使用软件控制CS引脚)
  *    - Baud Rate: ≤10 MHz        (数据手册Page1 Features)
+ *    如何开启SPI的DMA
+ *    - 在SPI中找到"DMA Settings"标签并点击，在DMA设置部分，点击"Add"按钮，添加一个传输请求
+ *    - 在弹出的配置中选择：
+ *    - DMA Request: SPI1_TX (SPI1的DMA请求)
+ *    - Direction: Memory To Peripheral (用于发送数据)
+ *    - Priority: 优先级，根据需要选择（Medium或High）
+ *    - Mode: 选择 Normal (单次传输)
+ *    - 其他参数保持默认即可
  * 3. 引脚分配：
  *    - SCK:  指定时钟引脚
  *    - MOSI: 指定数据输出
  *    - MISO: 仅AD8403需要，其他型号可以选择Transmit Only Master来节省引脚
- * [步骤2] GPIO配置
+ * [步骤2] GPIO配置,推荐使用STM32CubeMX的右键标签配置GPIO引脚
  * ----------------------------------------------------------
  * 1. CS引脚：
  *    - 引脚上左键模式: Output Push-Pull
@@ -117,6 +125,9 @@ extern "C"
 #include "main.h"
 #include "spi.h"
 
+/* 定义未连接引脚的标志值 */
+#define PIN_NOT_CONNECTED 0xFFFF
+
 /* AD840X通道定义
  * 对应数据手册Page22 Table13：
  * AD8400：只有通道1
@@ -132,16 +143,15 @@ extern "C"
 typedef struct 
 {
     SPI_HandleTypeDef *hspi;    // SPI句柄
-    GPIO_TypeDef *cs_port;      // CS端口
-    uint16_t cs_pin;            // CS引脚
-#ifdef AD840X_SHDN_GPIO_Port
-    GPIO_TypeDef *shdn_port;    // SHDN端口
-    uint16_t shdn_pin;          // SHDN引脚
-#endif
-#ifdef AD840X_RS_GPIO_Port
-    GPIO_TypeDef *rs_port;      // RS端口
-    uint16_t rs_pin;            // RS引脚
-#endif
+    GPIO_TypeDef *cs_port;      // CS端口 (必须)
+    uint16_t cs_pin;            // CS引脚 (必须)
+    
+    GPIO_TypeDef *shdn_port;    // SHDN端口 (可选)
+    uint16_t shdn_pin;          // SHDN引脚 (可选)，PIN_NOT_CONNECTED表示未连接
+    
+    GPIO_TypeDef *rs_port;      // RS端口 (可选)
+    uint16_t rs_pin;            // RS引脚 (可选)，PIN_NOT_CONNECTED表示未连接
+    
     uint8_t use_dma;            // 是否使用DMA传输
 } AD840X_HandleTypeDef;
 
@@ -153,6 +163,7 @@ typedef struct
      * @param  hspi: SPI句柄指针
      * @param  cs_port: CS引脚端口
      * @param  cs_pin: CS引脚
+     * @note   如果SHDN或RS未连接到STM32，请确保它们连接到高电平(VDD)
      * @retval None
      */
     void AD840X_Init(AD840X_HandleTypeDef *hdev, SPI_HandleTypeDef *hspi, 
@@ -161,10 +172,11 @@ typedef struct
     /**
      * @brief  配置设备的SHDN和RS引脚（如果使用）
      * @param  hdev: AD840X设备句柄指针
-     * @param  shdn_port: SHDN引脚端口
+     * @param  shdn_port: SHDN引脚端口，如不使用则传NULL
      * @param  shdn_pin: SHDN引脚
-     * @param  rs_port: RS引脚端口
+     * @param  rs_port: RS引脚端口，如不使用则传NULL
      * @param  rs_pin: RS引脚
+     * @note   如果不连接到STM32，请确保这些引脚外部连接到高电平(VDD)
      * @retval None
      */
     void AD840X_Config_Pins(AD840X_HandleTypeDef *hdev, 
@@ -187,6 +199,7 @@ typedef struct
      * @brief  通过RS引脚复位所有通道到中间值
      * @param  hdev: AD840X设备句柄指针
      * @note   时序需满足tRS≥50ns（Page10 Table4）
+     * @note   如果RS引脚未连接到STM32，此函数将通过SPI写入中间值
      * @ref    Page12 Pin Descriptions, Page20 Programming
      */
     void AD840X_Reset(AD840X_HandleTypeDef *hdev);
@@ -196,6 +209,7 @@ typedef struct
      * @param  hdev: AD840X设备句柄指针
      * @param  state: 0-进入断电模式，1-恢复正常模式
      * @note   仅AD8402/AD8403有效，AD8400需忽略此函数
+     * @note   如果SHDN引脚未连接到STM32，此函数将不执行任何操作
      * @ref    Page12 Pin Descriptions, Page20 Theory of Operation
      */
     void AD840X_Shutdown(AD840X_HandleTypeDef *hdev, uint8_t state);

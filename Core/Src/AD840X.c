@@ -25,6 +25,12 @@ void AD840X_Init(AD840X_HandleTypeDef *hdev, SPI_HandleTypeDef *hspi,
     hdev->cs_port = cs_port;
     hdev->cs_pin = cs_pin;
 
+    /* 默认情况下，假设SHDN和RS引脚未连接到STM32 */
+    hdev->shdn_port = NULL;
+    hdev->shdn_pin = PIN_NOT_CONNECTED;
+    hdev->rs_port = NULL;
+    hdev->rs_pin = PIN_NOT_CONNECTED;
+
     /* 检查SPI是否配置了DMA */
     if (hspi->hdmatx != NULL)
     {
@@ -37,44 +43,53 @@ void AD840X_Init(AD840X_HandleTypeDef *hdev, SPI_HandleTypeDef *hspi,
 
     /* 初始化时将CS引脚拉高 */
     HAL_GPIO_WritePin(hdev->cs_port, hdev->cs_pin, GPIO_PIN_SET);
-
-#ifdef AD840X_SHDN_GPIO_Port
-    /* 默认使用默认的引脚定义，如果需要自定义，可以后续调用AD840X_Config_Pins */
-    hdev->shdn_port = AD840X_SHDN_GPIO_Port;
-    hdev->shdn_pin = AD840X_SHDN_Pin;
-#endif
-
-#ifdef AD840X_RS_GPIO_Port
-    hdev->rs_port = AD840X_RS_GPIO_Port;
-    hdev->rs_pin = AD840X_RS_Pin;
-#endif
-
-    /* 初始化所有通道为中间值（128） */
-    AD840X_Reset(hdev);
 }
 
 /**
  * @brief  配置设备的SHDN和RS引脚（如果使用）
  * @param  hdev: AD840X设备句柄指针
- * @param  shdn_port: SHDN引脚端口
+ * @param  shdn_port: SHDN引脚端口，如不使用则传NULL
  * @param  shdn_pin: SHDN引脚
- * @param  rs_port: RS引脚端口
+ * @param  rs_port: RS引脚端口，如不使用则传NULL
  * @param  rs_pin: RS引脚
+ * @note   如果不连接到STM32，请确保这些引脚连接到高电平(VDD)
  * @retval None
  */
 void AD840X_Config_Pins(AD840X_HandleTypeDef *hdev, 
                        GPIO_TypeDef *shdn_port, uint16_t shdn_pin,
                        GPIO_TypeDef *rs_port, uint16_t rs_pin)
 {
-#ifdef AD840X_SHDN_GPIO_Port
-    hdev->shdn_port = shdn_port;
-    hdev->shdn_pin = shdn_pin;
-#endif
+    /* 配置SHDN引脚 */
+    if (shdn_port == NULL)
+    {
+        hdev->shdn_port = NULL;
+        hdev->shdn_pin = PIN_NOT_CONNECTED;
+        /* 在配置函数中不输出警告，只在实际使用功能时输出 */
+    }
+    else
+    {
+        hdev->shdn_port = shdn_port;
+        hdev->shdn_pin = shdn_pin;
+        
+        /* 默认设置为高电平（正常工作模式） */
+        HAL_GPIO_WritePin(hdev->shdn_port, hdev->shdn_pin, GPIO_PIN_SET);
+    }
 
-#ifdef AD840X_RS_GPIO_Port
-    hdev->rs_port = rs_port;
-    hdev->rs_pin = rs_pin;
-#endif
+    /* 配置RS引脚 */
+    if (rs_port == NULL)
+    {
+        hdev->rs_port = NULL;
+        hdev->rs_pin = PIN_NOT_CONNECTED;
+        /* 在配置函数中不输出警告，只在实际使用功能时输出 */
+    }
+    else
+    {
+        hdev->rs_port = rs_port;
+        hdev->rs_pin = rs_pin;
+        
+        /* 默认设置为高电平（正常工作模式） */
+        HAL_GPIO_WritePin(hdev->rs_port, hdev->rs_pin, GPIO_PIN_SET);
+    }
 }
 
 /**
@@ -144,22 +159,31 @@ void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
  * @brief  通过RS引脚复位所有通道到中间值
  * @param  hdev: AD840X设备句柄指针
  * @note   时序需满足tRS≥50ns（Page10 Table4）
+ * @note   如果RS引脚未连接到STM32，将通过SPI写入中间值实现复位
  * @ref    Page12 Pin Descriptions, Page20 Programming
  */
 void AD840X_Reset(AD840X_HandleTypeDef *hdev)
 {
-#ifdef AD840X_RS_GPIO_Port
-    /* RS低脉冲触发复位 */
-    HAL_GPIO_WritePin(hdev->rs_port, hdev->rs_pin, GPIO_PIN_RESET);
-    // HAL_Delay(1); // 实际应用中可用更精准的延时（如1μs）
-    HAL_GPIO_WritePin(hdev->rs_port, hdev->rs_pin, GPIO_PIN_SET);
-#else
-    /* 如果没有RS引脚，则通过SPI写入中间值（128）到所有通道 */
-    AD840X_Write(hdev, AD840X_CHANNEL_1, 128);
-    AD840X_Write(hdev, AD840X_CHANNEL_2, 128);
-    AD840X_Write(hdev, AD840X_CHANNEL_3, 128);
-    AD840X_Write(hdev, AD840X_CHANNEL_4, 128);
-#endif
+    if (hdev->rs_port == NULL || hdev->rs_pin == PIN_NOT_CONNECTED)
+    {
+        /* 引脚未连接时发出警告 */
+        #warning "RS pin not connected to STM32. Using SPI commands to reset to mid-scale. Make sure RS pin is pulled up to VDD externally."//RS引脚未连接STM32,请连接高电平。这里使用SPI设置为中值的方式复位
+        //SHDN和RS引脚不连接单片机时，请连接高电平
+        
+        /* 如果未连接RS引脚，则通过SPI写入中间值（128）到所有通道 */
+        AD840X_Write(hdev, AD840X_CHANNEL_1, 128);
+        AD840X_Write(hdev, AD840X_CHANNEL_2, 128);
+        AD840X_Write(hdev, AD840X_CHANNEL_3, 128);
+        AD840X_Write(hdev, AD840X_CHANNEL_4, 128);
+    }
+    else
+    {
+        /* RS低脉冲触发复位 */
+        HAL_GPIO_WritePin(hdev->rs_port, hdev->rs_pin, GPIO_PIN_RESET);
+        // 短延时，确保至少50ns
+        for(volatile uint8_t i = 0; i < 5; i++); 
+        HAL_GPIO_WritePin(hdev->rs_port, hdev->rs_pin, GPIO_PIN_SET);
+    }
 }
 
 /**
@@ -167,21 +191,28 @@ void AD840X_Reset(AD840X_HandleTypeDef *hdev)
  * @param  hdev: AD840X设备句柄指针
  * @param  state: 0-进入断电模式，1-恢复正常模式
  * @note   仅AD8402/AD8403有效，AD8400需忽略此函数
+ * @note   如果SHDN引脚未连接到STM32，此函数不会执行任何操作
  * @ref    Page12 Pin Descriptions, Page20 Theory of Operation
  */
 void AD840X_Shutdown(AD840X_HandleTypeDef *hdev, uint8_t state)
 {
-#ifdef AD840X_SHDN_GPIO_Port
+    if (hdev->shdn_port == NULL || hdev->shdn_pin == PIN_NOT_CONNECTED)
+    {
+        /* 引脚未连接时发出警告 */
+        #warning "SHDN pin not connected to STM32. Cannot control shutdown mode. Make sure SHDN pin is pulled up to VDD externally for normal operation."//SHDN引脚不连接单片机时,这个函数无效
+        //SHDN和RS引脚不连接单片机时，请连接高电平
+        return;
+    }
+
     /* SHDN低电平有效 */
     HAL_GPIO_WritePin(hdev->shdn_port, hdev->shdn_pin,
-                      state ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                     state ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
     /* 退出断电模式后需等待稳定（参考Page4 Table1的ts参数）*/
     if (state)
     {
         HAL_Delay(1); // 至少等待2μs（根据ts=2μs@10kΩ）
     }
-#endif
 }
 /*
  *             /\_____/\

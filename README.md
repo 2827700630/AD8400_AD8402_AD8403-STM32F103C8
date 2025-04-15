@@ -108,14 +108,14 @@ GPIO     --> RS (可选，未连接需上拉)
 
 定义设备句柄:
 ```c
-// 定义多个设备句柄
+// 定义多个设备句柄，连接多少个设备就定义多少个
 AD840X_HandleTypeDef hAD840X_1;  // 第一个设备
 AD840X_HandleTypeDef hAD840X_2;  // 第二个设备
 ```
 
 初始化函数:
 ```c
-// 初始化第一个设备
+// 初始化第一个设备，这里的AD840X_CS1需要手动在cubeMX中设置
 AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS1_GPIO_Port, AD840X_CS1_Pin);
 AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin,
                   AD840X_RS1_GPIO_Port, AD840X_RS1_Pin);

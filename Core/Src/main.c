@@ -20,11 +20,11 @@
  * 雪豹  编写
  * 说明在AD840X.h文件中
  * 如果您需要在其他项目中使用这个AD840X驱动，只需：
- * 1. 在STM32CubeMX中配置SPI外设，选择DMA传输方式
+ * 1. 在STM32CubeMX中配置SPI外设和GPIO引脚
  * 2. 拷贝AD840X.c和AD840X.h两个文件
  * 3. 在您的代码中包含AD840X.h头文件
- * 4. 调用AD840X_Init(&hspiX)初始化，传入您使用的SPI句柄
- * 5. 然后就可以自由使用AD840X_Write()或AD840X_Write_DMA()函数了
+ * 4. 创建AD840X_HandleTypeDef结构体变量并调用AD840X_Init初始化
+ * 5. 然后就可以自由使用AD840X_Write函数了(会自动检测是否支持DMA)
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
@@ -57,6 +57,7 @@
 
 /* USER CODE BEGIN PV */
 
+AD840X_HandleTypeDef hAD840X_1; // 定义AD840X设备句柄
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,9 +72,9 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -103,11 +104,15 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
-  AD840X_Init(&hspi1);                              // 初始化AD840X数字电位器
-  AD840X_Reset();                                   // 初始化所有通道为中间值（128）
+  // 初始化AD840X数字电位器，传入SPI句柄和CS引脚
+  AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS_GPIO_Port, AD840X_CS_Pin);
+
+  // 复位所有通道到中间值（128）
+  AD840X_Reset(&hAD840X_1);
+
   HAL_Delay(5000);
-  uint8_t resistance_value = 0;                     // 电阻值从0开始
-  AD840X_Write(AD840X_CHANNEL_2, resistance_value); // 初始化电阻值为0
+  uint8_t resistance_value = 0;                                 // 电阻值从0开始
+  AD840X_Write(&hAD840X_1, AD840X_CHANNEL_2, resistance_value); // 初始化电阻值为0
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -128,7 +133,7 @@ int main(void)
     }
 
     // 设置新的电阻值
-    AD840X_Write(AD840X_CHANNEL_2, resistance_value);
+    AD840X_Write(&hAD840X_1, AD840X_CHANNEL_2, resistance_value);
 
     // 延时2秒
     HAL_Delay(2000);
@@ -141,17 +146,17 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -165,9 +170,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -184,9 +188,9 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -198,14 +202,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */

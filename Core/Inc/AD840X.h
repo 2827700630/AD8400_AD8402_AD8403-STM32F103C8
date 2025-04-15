@@ -128,35 +128,77 @@ extern "C"
 #define AD840X_CHANNEL_3 0b00000010 // 通道3，只有AD8403有通道3
 #define AD840X_CHANNEL_4 0b00000011 // 通道4，只有AD8403有通道4
 
+/* 设备句柄结构体定义 */
+typedef struct 
+{
+    SPI_HandleTypeDef *hspi;    // SPI句柄
+    GPIO_TypeDef *cs_port;      // CS端口
+    uint16_t cs_pin;            // CS引脚
+#ifdef AD840X_SHDN_GPIO_Port
+    GPIO_TypeDef *shdn_port;    // SHDN端口
+    uint16_t shdn_pin;          // SHDN引脚
+#endif
+#ifdef AD840X_RS_GPIO_Port
+    GPIO_TypeDef *rs_port;      // RS端口
+    uint16_t rs_pin;            // RS引脚
+#endif
+    uint8_t use_dma;            // 是否使用DMA传输
+} AD840X_HandleTypeDef;
+
     /* 函数声明 */
 
-    void AD840X_Init(SPI_HandleTypeDef *hspi);
-    void AD840X_Write(uint8_t channel, uint8_t value);
-
     /**
-     * @brief  使用DMA方式写入AD840X
-     * @param  channel: 通道地址（2位）
-     * @param  value: 8位电阻值（0-255）
-     * @note   使用DMA方式时，需要在STM32CubeMX中配置SPI的DMA传输
+     * @brief  初始化AD840X数字电位器
+     * @param  hdev: AD840X设备句柄指针
+     * @param  hspi: SPI句柄指针
+     * @param  cs_port: CS引脚端口
+     * @param  cs_pin: CS引脚
      * @retval None
      */
-    void AD840X_Write_DMA(uint8_t channel, uint8_t value);
+    void AD840X_Init(AD840X_HandleTypeDef *hdev, SPI_HandleTypeDef *hspi, 
+                    GPIO_TypeDef *cs_port, uint16_t cs_pin);
+
+    /**
+     * @brief  配置设备的SHDN和RS引脚（如果使用）
+     * @param  hdev: AD840X设备句柄指针
+     * @param  shdn_port: SHDN引脚端口
+     * @param  shdn_pin: SHDN引脚
+     * @param  rs_port: RS引脚端口
+     * @param  rs_pin: RS引脚
+     * @retval None
+     */
+    void AD840X_Config_Pins(AD840X_HandleTypeDef *hdev, 
+                           GPIO_TypeDef *shdn_port, uint16_t shdn_pin,
+                           GPIO_TypeDef *rs_port, uint16_t rs_pin);
+
+    /**
+     * @brief  AD840X写操作函数
+     * @param  hdev: AD840X设备句柄指针
+     * @param  channel: 通道地址（2位，见表13 Page22）
+     * @param  value: 8位电阻值（0-255）
+     * @note   - 如果初始化时检测到SPI配置了DMA，将自动使用DMA方式传输
+     *         - 数据格式：Page11 Table6（10位：2位地址+8位数据）
+     *         - 时序图：Page10 Figure3/Figure4
+     * @retval None
+     */
+    void AD840X_Write(AD840X_HandleTypeDef *hdev, uint8_t channel, uint8_t value);
 
     /**
      * @brief  通过RS引脚复位所有通道到中间值
-     * @param  None
+     * @param  hdev: AD840X设备句柄指针
      * @note   时序需满足tRS≥50ns（Page10 Table4）
      * @ref    Page12 Pin Descriptions, Page20 Programming
      */
-    void AD840X_Reset(void);
+    void AD840X_Reset(AD840X_HandleTypeDef *hdev);
 
     /**
      * @brief  控制SHDN引脚进入/退出低功耗模式
+     * @param  hdev: AD840X设备句柄指针
      * @param  state: 0-进入断电模式，1-恢复正常模式
      * @note   仅AD8402/AD8403有效，AD8400需忽略此函数
      * @ref    Page12 Pin Descriptions, Page20 Theory of Operation
      */
-    void AD840X_Shutdown(uint8_t state);
+    void AD840X_Shutdown(AD840X_HandleTypeDef *hdev, uint8_t state);
 
 #ifdef __cplusplus
 }

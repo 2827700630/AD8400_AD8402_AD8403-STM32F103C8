@@ -36,7 +36,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "AD840X.h" //引入AD840X驱动库
+#include "AD840X.h" // 引入AD840X驱动库
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -75,9 +75,9 @@ void SystemClock_Config(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -106,77 +106,86 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); // 打开LED指示灯
   // 初始化第一个AD840X数字电位器，使用完整引脚配置
   AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS1_GPIO_Port, AD840X_CS1_Pin);
   AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin,
-                    AD840X_RS1_GPIO_Port, AD840X_RS1_Pin);
-  
+                     AD840X_RS1_GPIO_Port, AD840X_RS1_Pin);
   // 初始化第二个AD840X数字电位器，使用完整引脚配置
   AD840X_Init(&hAD840X_2, &hspi1, AD840X_CS2_GPIO_Port, AD840X_CS2_Pin);
   AD840X_Config_Pins(&hAD840X_2, AD840X_SHDN2_GPIO_Port, AD840X_SHDN2_Pin,
-                    AD840X_RS2_GPIO_Port, AD840X_RS2_Pin);
-  
+                     AD840X_RS2_GPIO_Port, AD840X_RS2_Pin);
   // 初始化第三个AD840X数字电位器，但不配置SHDN和RS引脚
-  // 注意：SHDN和RS引脚必须外部接高电平(VDD)以保证正常工作
+  // 注意：SHDN和RS引脚必须外部接高电平(VDD)以保证正常工作。运行到对应函数会触发警告
   AD840X_Init(&hAD840X_3, &hspi1, AD840X_CS3_GPIO_Port, AD840X_CS3_Pin);
-  
   // 复位所有设备的通道到中间值（128）
   AD840X_Reset(&hAD840X_1); // 使用RS引脚复位
   AD840X_Reset(&hAD840X_2); // 使用RS引脚复位
   AD840X_Reset(&hAD840X_3); // 使用SPI命令复位（因为RS未连接）
-  
-  HAL_Delay(1000);
-  
-  // 设置初始值
-  uint8_t resistance_value1 = 0;  // 第一个设备的起始值
-  uint8_t resistance_value2 = 64; // 第二个设备的起始值
-  uint8_t resistance_value3 = 128; // 第三个设备的起始值
-  
-  AD840X_Write(&hAD840X_1, AD840X_CHANNEL_1, resistance_value1);
-  AD840X_Write(&hAD840X_2, AD840X_CHANNEL_1, resistance_value2);
-  AD840X_Write(&hAD840X_3, AD840X_CHANNEL_1, resistance_value3);
+  HAL_Delay(5000);
+
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); // 关闭LED指示灯
+// 设置初始值 - 使用新的函数，更直观地按电阻值设置
+// 定义各个设备的满量程电阻值（根据实际型号选择）
+#define DEV1_FULL_SCALE AD840X_10K_OHM // 第一个设备是10kΩ型号
+#define DEV2_FULL_SCALE AD840X_50K_OHM // 第二个设备是50kΩ型号
+#define DEV3_FULL_SCALE AD840X_10K_OHM // 第三个设备是10kΩ型号
+
+  // // 设置初始电阻值（更直观，直接使用欧姆值）
+  // AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, 0.0f, DEV1_FULL_SCALE);     // 设置为0Ω
+  // AD840X_WriteResistance(&hAD840X_2, AD840X_CHANNEL_1, 12500.0f, DEV2_FULL_SCALE); // 设置为12.5kΩ (50kΩ的25%)
+  // AD840X_WriteRatio(&hAD840X_3, AD840X_CHANNEL_1, 0.5f);                           // 设置为50%的分压比例
+  // HAL_Delay(5000);
+
+  // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); // 打开LED指示灯
+  // AD840X_Shutdown(&hAD840X_1, 0);                          // 将设备1设置为低功耗模式
+  // AD840X_Shutdown(&hAD840X_2, 0);                          // 将设备2设置为低功耗模式
+  // AD840X_Shutdown(&hAD840X_3, 0);                          // 将设备3设置为低功耗模式
+  // HAL_Delay(5000);
+
+  // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); // 打开LED指示灯
+  // AD840X_Shutdown(&hAD840X_1, 1);                            // 恢复设备1的正常模式
+  // AD840X_Shutdown(&hAD840X_2, 1);                            // 恢复设备2的正常模式
+  // AD840X_Shutdown(&hAD840X_3, 1);                            // 恢复设备3的正常模式
+  // // AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, 5000.0f, DEV1_FULL_SCALE);
+  AD840X_WriteRatio(&hAD840X_1, AD840X_CHANNEL_2, 0.5);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // 控制LED指示灯闪烁
-    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+    // // 控制LED指示灯闪烁
+    // HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
 
-    // 每2秒增加电阻值
-    resistance_value1 += 4;  // 设备1每次增加4个单位
-    resistance_value2 += 8;  // 设备2每次增加8个单位
-    resistance_value3 += 16; // 设备3每次增加16个单位
+    // // 使用静态变量存储当前电阻值，便于循环更新
+    // static float resistance1 = 0.0f;      // 第一个设备的电阻值 (欧姆)
+    // static float resistance2 = 12500.0f;  // 第二个设备的电阻值 (欧姆)
+    // static float ratio3 = 0.5f;           // 第三个设备的分压比例
 
-    // 处理溢出
-    if (resistance_value1 > 252) resistance_value1 = 0;
-    if (resistance_value2 > 248) resistance_value2 = 0;
-    if (resistance_value3 > 240) resistance_value3 = 0;
+    // // 每2秒增加电阻值
+    // resistance1 += DEV1_FULL_SCALE * 0.016f;  // 每次增加约1.6%的满量程
+    // resistance2 += DEV2_FULL_SCALE * 0.032f;  // 每次增加约3.2%的满量程
+    // ratio3 += 0.063f;                         // 每次增加约6.3%的比例
 
-    // 设置新的电阻值
-    AD840X_Write(&hAD840X_1, AD840X_CHANNEL_1, resistance_value1);
-    AD840X_Write(&hAD840X_2, AD840X_CHANNEL_1, resistance_value2);
-    AD840X_Write(&hAD840X_3, AD840X_CHANNEL_1, resistance_value3);
-    
-    // 使用设备2的第二个通道，反向设置
-    AD840X_Write(&hAD840X_2, AD840X_CHANNEL_2, 255 - resistance_value2);
+    // // 处理溢出
+    // if (resistance1 > DEV1_FULL_SCALE * 0.98f)
+    //   resistance1 = 0.0f;
+    // if (resistance2 > DEV2_FULL_SCALE * 0.96f)
+    //   resistance2 = 0.0f;
+    // if (ratio3 > 0.94f)
+    //   ratio3 = 0.0f;
 
-    // 每5秒使用一次低功耗模式功能演示
-    static uint8_t counter = 0;
-    if(++counter >= 3) {
-      counter = 0;
-      
-      // 将设备1设置为低功耗模式
-      AD840X_Shutdown(&hAD840X_1, 0);
-      HAL_Delay(500);
-      
-      // 恢复设备1的正常模式
-      AD840X_Shutdown(&hAD840X_1, 1);
-    }
+    // // 设置新的电阻值 - 使用新函数直接指定电阻值和比例
+    // AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, resistance1, DEV1_FULL_SCALE);
+    // AD840X_WriteResistance(&hAD840X_2, AD840X_CHANNEL_1, resistance2, DEV2_FULL_SCALE);
+    // AD840X_WriteRatio(&hAD840X_3, AD840X_CHANNEL_1, ratio3);
 
-    // 延时2秒
-    HAL_Delay(2000);
+    // // 使用设备2的第二个通道，反向设置
+    // AD840X_WriteRatio(&hAD840X_2, AD840X_CHANNEL_2, 1.0f - ratio3);
+
+    // // 延时2秒
+    // HAL_Delay(2000);
 
     /* USER CODE END WHILE */
 
@@ -186,17 +195,17 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
@@ -210,9 +219,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
@@ -229,9 +237,9 @@ void SystemClock_Config(void)
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -243,14 +251,14 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */

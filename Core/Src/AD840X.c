@@ -214,6 +214,68 @@ void AD840X_Shutdown(AD840X_HandleTypeDef *hdev, uint8_t state)
         HAL_Delay(1); // 至少等待2μs（根据ts=2μs@10kΩ）
     }
 }
+
+/**
+ * @brief  计算8位控制值（0-255）对应的比例
+ * @param  ratio: 所需比例（0.0~1.0对应0%~100%）
+ * @retval 8位控制值（0x00~0xFF）
+ * @note   自动钳制超限值，0.5对应中值0x80
+ */
+uint8_t AD840X_CalculateRatio(float ratio)
+{
+    /* 参数保护 */
+    if(ratio < 0.0f) ratio = 0.0f;
+    if(ratio > 1.0f) ratio = 1.0f;
+    
+    /* 计算并四舍五入 */
+    return (uint8_t)(ratio * 255.0f + 0.5f);
+}
+
+/**
+ * @brief  基于分压比例设置数字电位器
+ * @param  hdev: AD840X设备句柄指针
+ * @param  channel: 通道地址（AD840X_CHANNEL_x）
+ * @param  ratio: 分压比例（0.0~1.0）
+ * @retval 实际设置的分压比例值
+ */
+float AD840X_WriteRatio(AD840X_HandleTypeDef *hdev, uint8_t channel, float ratio)
+{
+    uint8_t value = AD840X_CalculateRatio(ratio);
+    AD840X_Write(hdev, channel, value);
+    return value / 255.0f; // 返回实际设置的比例值
+}
+
+/**
+ * @brief  基于实际电阻值设置数字电位器
+ * @param  hdev: AD840X设备句柄指针
+ * @param  channel: 通道地址（AD840X_CHANNEL_x）
+ * @param  resistance: 目标电阻值（欧姆）
+ * @param  full_scale: 设备满量程电阻值（欧姆）
+ * @retval 实际设置的电阻值（欧姆）
+ */
+float AD840X_WriteResistance(AD840X_HandleTypeDef *hdev, uint8_t channel, 
+                          float resistance, float full_scale)
+{
+    float ratio;
+    uint8_t value;
+    
+    /* 限制电阻值在有效范围内 */
+    if (resistance <= 0.0f) {
+        ratio = 0.0f;
+    } else if (resistance >= full_scale) {
+        ratio = 1.0f;
+    } else {
+        ratio = resistance / full_scale;
+    }
+    
+    /* 设置电阻器 */
+    value = AD840X_CalculateRatio(ratio);
+    AD840X_Write(hdev, channel, value);
+    
+    /* 返回实际设置的电阻值 */
+    return (value / 255.0f) * full_scale;
+}
+
 /*
  *             /\_____/\
  *            /  o   o  \

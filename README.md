@@ -2,6 +2,7 @@
  使用STM32F103C8控制数字电位器AD840X，使用CubeIDE编写，也可以使用VSCode打开
 
 # AD840X数字电位器驱动库使用说明
+多芯片连接因为我没时间接线所以没测试
 
 ## 基本信息
 
@@ -103,7 +104,7 @@ GPIO     --> RS (可选，未连接需上拉)
 
 在主程序中包含头文件:
 ```c
-#include "AD840X.h"
+#include "AD840X.h" // 引入AD840X驱动库
 ```
 
 定义设备句柄:
@@ -111,6 +112,7 @@ GPIO     --> RS (可选，未连接需上拉)
 // 定义多个设备句柄，连接多少个设备就定义多少个
 AD840X_HandleTypeDef hAD840X_1;  // 第一个设备
 AD840X_HandleTypeDef hAD840X_2;  // 第二个设备
+AD840X_HandleTypeDef hAD840X_3;  // 第三个设备
 ```
 
 初始化函数:
@@ -122,6 +124,8 @@ AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin,
 
 // 初始化第二个设备
 AD840X_Init(&hAD840X_2, &hspi1, AD840X_CS2_GPIO_Port, AD840X_CS2_Pin);
+AD840X_Config_Pins(&hAD840X_2, AD840X_SHDN2_GPIO_Port, AD840X_SHDN2_Pin,
+                     AD840X_RS2_GPIO_Port, AD840X_RS2_Pin);
 
 // 初始化不带SHDN和RS的设备（这些引脚必须外部上拉至VDD）
 AD840X_Init(&hAD840X_3, &hspi1, AD840X_CS3_GPIO_Port, AD840X_CS3_Pin);

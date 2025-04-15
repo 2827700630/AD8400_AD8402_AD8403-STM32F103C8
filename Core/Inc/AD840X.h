@@ -139,21 +139,27 @@ extern "C"
 #define AD840X_CHANNEL_3 0b00000010 // 通道3，只有AD8403有通道3
 #define AD840X_CHANNEL_4 0b00000011 // 通道4，只有AD8403有通道4
 
-/* 设备句柄结构体定义 */
-typedef struct 
-{
-    SPI_HandleTypeDef *hspi;    // SPI句柄
-    GPIO_TypeDef *cs_port;      // CS端口 (必须)
-    uint16_t cs_pin;            // CS引脚 (必须)
-    
-    GPIO_TypeDef *shdn_port;    // SHDN端口 (可选)
-    uint16_t shdn_pin;          // SHDN引脚 (可选)，PIN_NOT_CONNECTED表示未连接
-    
-    GPIO_TypeDef *rs_port;      // RS端口 (可选)
-    uint16_t rs_pin;            // RS引脚 (可选)，PIN_NOT_CONNECTED表示未连接
-    
-    uint8_t use_dma;            // 是否使用DMA传输
-} AD840X_HandleTypeDef;
+/* 设备常见阻值定义 */
+#define AD840X_1K_OHM 1000.0f     // 1kΩ型号
+#define AD840X_10K_OHM 10000.0f   // 10kΩ型号
+#define AD840X_50K_OHM 50000.0f   // 50kΩ型号
+#define AD840X_100K_OHM 100000.0f // 100kΩ型号
+
+    /* 设备句柄结构体定义 */
+    typedef struct
+    {
+        SPI_HandleTypeDef *hspi; // SPI句柄
+        GPIO_TypeDef *cs_port;   // CS端口 (必须)
+        uint16_t cs_pin;         // CS引脚 (必须)
+
+        GPIO_TypeDef *shdn_port; // SHDN端口 (可选)
+        uint16_t shdn_pin;       // SHDN引脚 (可选)，PIN_NOT_CONNECTED表示未连接
+
+        GPIO_TypeDef *rs_port; // RS端口 (可选)
+        uint16_t rs_pin;       // RS引脚 (可选)，PIN_NOT_CONNECTED表示未连接
+
+        uint8_t use_dma; // 是否使用DMA传输
+    } AD840X_HandleTypeDef;
 
     /* 函数声明 */
 
@@ -166,8 +172,8 @@ typedef struct
      * @note   如果SHDN或RS未连接到STM32，请确保它们连接到高电平(VDD)
      * @retval None
      */
-    void AD840X_Init(AD840X_HandleTypeDef *hdev, SPI_HandleTypeDef *hspi, 
-                    GPIO_TypeDef *cs_port, uint16_t cs_pin);
+    void AD840X_Init(AD840X_HandleTypeDef *hdev, SPI_HandleTypeDef *hspi,
+                     GPIO_TypeDef *cs_port, uint16_t cs_pin);
 
     /**
      * @brief  配置设备的SHDN和RS引脚（如果使用）
@@ -179,9 +185,9 @@ typedef struct
      * @note   如果不连接到STM32，请确保这些引脚外部连接到高电平(VDD)
      * @retval None
      */
-    void AD840X_Config_Pins(AD840X_HandleTypeDef *hdev, 
-                           GPIO_TypeDef *shdn_port, uint16_t shdn_pin,
-                           GPIO_TypeDef *rs_port, uint16_t rs_pin);
+    void AD840X_Config_Pins(AD840X_HandleTypeDef *hdev,
+                            GPIO_TypeDef *shdn_port, uint16_t shdn_pin,
+                            GPIO_TypeDef *rs_port, uint16_t rs_pin);
 
     /**
      * @brief  AD840X写操作函数
@@ -213,6 +219,34 @@ typedef struct
      * @ref    Page12 Pin Descriptions, Page20 Theory of Operation
      */
     void AD840X_Shutdown(AD840X_HandleTypeDef *hdev, uint8_t state);
+
+    /**
+     * @brief  计算8位控制值（0-255）对应的比例
+     * @param  ratio: 所需比例（0.0~1.0对应0%~100%）
+     * @retval 8位控制值（0x00~0xFF）
+     * @note   自动钳制超限值，0.5对应中值0x80
+     */
+    uint8_t AD840X_CalculateRatio(float ratio);
+
+    /**
+     * @brief  基于分压比例设置数字电位器
+     * @param  hdev: AD840X设备句柄指针
+     * @param  channel: 通道地址（AD840X_CHANNEL_x）
+     * @param  ratio: 分压比例（0.0~1.0）
+     * @retval 实际设置的分压比例值
+     */
+    float AD840X_WriteRatio(AD840X_HandleTypeDef *hdev, uint8_t channel, float ratio);
+
+    /**
+     * @brief  基于实际电阻值设置数字电位器
+     * @param  hdev: AD840X设备句柄指针
+     * @param  channel: 通道地址（AD840X_CHANNEL_x）
+     * @param  resistance: 目标电阻值（欧姆）
+     * @param  full_scale: 设备满量程电阻值（欧姆）
+     * @retval 实际设置的电阻值（欧姆）
+     */
+    float AD840X_WriteResistance(AD840X_HandleTypeDef *hdev, uint8_t channel,
+                                 float resistance, float full_scale);
 
 #ifdef __cplusplus
 }

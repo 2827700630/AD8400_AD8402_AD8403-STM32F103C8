@@ -59,6 +59,8 @@
 /* USER CODE BEGIN PV */
 // 定义AD840X设备句柄
 AD840X_HandleTypeDef hAD840X_1; // 第一个设备
+AD840X_HandleTypeDef hAD840X_2; // 第二个设备
+AD840X_HandleTypeDef hAD840X_3; // 第三个设备(SHDN和RS未连接到STM32)
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -109,42 +111,81 @@ int main(void)
   AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS1_GPIO_Port, AD840X_CS1_Pin);
   AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin,
                      AD840X_RS1_GPIO_Port, AD840X_RS1_Pin);
-
+  // 初始化第二个AD840X数字电位器，使用完整引脚配置
+  AD840X_Init(&hAD840X_2, &hspi1, AD840X_CS2_GPIO_Port, AD840X_CS2_Pin);
+  AD840X_Config_Pins(&hAD840X_2, AD840X_SHDN2_GPIO_Port, AD840X_SHDN2_Pin,
+                     AD840X_RS2_GPIO_Port, AD840X_RS2_Pin);
+  // 初始化第三个AD840X数字电位器，但不配置SHDN和RS引脚
+  // 注意：SHDN和RS引脚必须外部接高电平(VDD)以保证正常工作。运行到对应函数会触发警告
+  AD840X_Init(&hAD840X_3, &hspi1, AD840X_CS3_GPIO_Port, AD840X_CS3_Pin);
   // 复位所有设备的通道到中间值（128）
-  AD840X_Reset(&hAD840X_1); // 复位
-  HAL_Delay(1000);
+  AD840X_Reset(&hAD840X_1); // 使用RS引脚复位
+  AD840X_Reset(&hAD840X_2); // 使用RS引脚复位
+  AD840X_Reset(&hAD840X_3); // 使用SPI命令复位（因为RS未连接）
+  HAL_Delay(5000);
 
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); // 关闭LED指示灯
-  // 设置初始值 - 使用新的函数，更直观地按电阻值设置
+// 设置初始值 - 使用新的函数，更直观地按电阻值设置
+// 定义各个设备的满量程电阻值（根据实际型号选择）
+#define DEV1_FULL_SCALE AD840X_10K_OHM // 第一个设备是10kΩ型号
+#define DEV2_FULL_SCALE AD840X_50K_OHM // 第二个设备是50kΩ型号
+#define DEV3_FULL_SCALE AD840X_10K_OHM // 第三个设备是10kΩ型号
 
-  AD840X_Write(&hAD840X_1, AD840X_CHANNEL_2, 128); // 设置为中间值（128）
-  // 设置初始电阻值（更直观，直接使用欧姆值）
-  AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, 100.0f, AD840X_10K_OHM); // 设置为100Ω,程序会计算对应最近的值
+  // // 设置初始电阻值（更直观，直接使用欧姆值）
+  // AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, 0.0f, DEV1_FULL_SCALE);     // 设置为0Ω
+  // AD840X_WriteResistance(&hAD840X_2, AD840X_CHANNEL_1, 12500.0f, DEV2_FULL_SCALE); // 设置为12.5kΩ (50kΩ的25%)
+  // AD840X_WriteRatio(&hAD840X_3, AD840X_CHANNEL_1, 0.5f);                           // 设置为50%的分压比例
+  // HAL_Delay(5000);
 
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); // 打开LED指示灯
-  AD840X_Shutdown(&hAD840X_1, 0);                          // 将设备1设置为低功耗模式
+  // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); // 打开LED指示灯
+  // AD840X_Shutdown(&hAD840X_1, 0);                          // 将设备1设置为低功耗模式
+  // AD840X_Shutdown(&hAD840X_2, 0);                          // 将设备2设置为低功耗模式
+  // AD840X_Shutdown(&hAD840X_3, 0);                          // 将设备3设置为低功耗模式
+  // HAL_Delay(5000);
 
-  HAL_Delay(1000);
-
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); // 关闭LED指示灯
-  AD840X_Shutdown(&hAD840X_1, 1);                            // 恢复设备1的正常模式
-
-  float rate = 0.0f; // 设置分压比例（0.0~1.0）
+  // HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); // 打开LED指示灯
+  // AD840X_Shutdown(&hAD840X_1, 1);                            // 恢复设备1的正常模式
+  // AD840X_Shutdown(&hAD840X_2, 1);                            // 恢复设备2的正常模式
+  // AD840X_Shutdown(&hAD840X_3, 1);                            // 恢复设备3的正常模式
+  // // AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, 5000.0f, DEV1_FULL_SCALE);
+  AD840X_WriteRatio(&hAD840X_1, AD840X_CHANNEL_2, 0.5);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // 控制LED指示灯闪烁
-    HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-    AD840X_WriteRatio(&hAD840X_1, AD840X_CHANNEL_2, rate);
-    rate = rate + 0.1f;
-    if (rate > 1.0f)
-    {
-      rate = 0.0f; // 重置比例
-    }
-    HAL_Delay(2000);
+    // // 控制LED指示灯闪烁
+    // HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
+    // // 使用静态变量存储当前电阻值，便于循环更新
+    // static float resistance1 = 0.0f;      // 第一个设备的电阻值 (欧姆)
+    // static float resistance2 = 12500.0f;  // 第二个设备的电阻值 (欧姆)
+    // static float ratio3 = 0.5f;           // 第三个设备的分压比例
+
+    // // 每2秒增加电阻值
+    // resistance1 += DEV1_FULL_SCALE * 0.016f;  // 每次增加约1.6%的满量程
+    // resistance2 += DEV2_FULL_SCALE * 0.032f;  // 每次增加约3.2%的满量程
+    // ratio3 += 0.063f;                         // 每次增加约6.3%的比例
+
+    // // 处理溢出
+    // if (resistance1 > DEV1_FULL_SCALE * 0.98f)
+    //   resistance1 = 0.0f;
+    // if (resistance2 > DEV2_FULL_SCALE * 0.96f)
+    //   resistance2 = 0.0f;
+    // if (ratio3 > 0.94f)
+    //   ratio3 = 0.0f;
+
+    // // 设置新的电阻值 - 使用新函数直接指定电阻值和比例
+    // AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, resistance1, DEV1_FULL_SCALE);
+    // AD840X_WriteResistance(&hAD840X_2, AD840X_CHANNEL_1, resistance2, DEV2_FULL_SCALE);
+    // AD840X_WriteRatio(&hAD840X_3, AD840X_CHANNEL_1, ratio3);
+
+    // // 使用设备2的第二个通道，反向设置
+    // AD840X_WriteRatio(&hAD840X_2, AD840X_CHANNEL_2, 1.0f - ratio3);
+
+    // // 延时2秒
+    // HAL_Delay(2000);
 
     /* USER CODE END WHILE */
 

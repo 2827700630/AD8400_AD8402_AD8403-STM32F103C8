@@ -59,12 +59,20 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define LED_Pin GPIO_PIN_13
 #define LED_GPIO_Port GPIOC
-#define AD840X_CS_Pin GPIO_PIN_0
-#define AD840X_CS_GPIO_Port GPIOB
-#define AD840X_SHDN_Pin GPIO_PIN_1
-#define AD840X_SHDN_GPIO_Port GPIOB
-#define AD840X_RS_Pin GPIO_PIN_10
-#define AD840X_RS_GPIO_Port GPIOB
+#define AD840X_CS1_Pin GPIO_PIN_0
+#define AD840X_CS1_GPIO_Port GPIOB
+#define AD840X_RS1_Pin GPIO_PIN_1
+#define AD840X_RS1_GPIO_Port GPIOB
+#define AD840X_SHDN1_Pin GPIO_PIN_10
+#define AD840X_SHDN1_GPIO_Port GPIOB
+#define AD840X_CS2_Pin GPIO_PIN_11
+#define AD840X_CS2_GPIO_Port GPIOB
+#define AD840X_RS2_Pin GPIO_PIN_12
+#define AD840X_RS2_GPIO_Port GPIOB
+#define AD840X_SHDN2_Pin GPIO_PIN_13
+#define AD840X_SHDN2_GPIO_Port GPIOB
+#define AD840X_CS3_Pin GPIO_PIN_14
+#define AD840X_CS3_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

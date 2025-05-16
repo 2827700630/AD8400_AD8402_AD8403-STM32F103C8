@@ -19,18 +19,17 @@
  * AD840X系列数字电位器驱动库
  * 雪豹  编写  github.com/2827700630
  * 编码UTF-8
- * 说明在AD840X.h文件中
+ * 说明在AD840X.h文件中，也可以看readme.md
  * 如果您需要在其他项目中使用这个AD840X驱动，只需：
- * 1. 在STM32CubeMX中配置SPI外设和GPIO引脚，SPI开启DMA的方法见AD840X.h文件
+ * 1. 在STM32CubeMX中配置SPI外设和GPIO引脚
  * 2. 拷贝AD840X.c和AD840X.h两个文件
  * 3. 在您的代码中包含AD840X.h头文件（见第38行）
  * 4. 创建AD840X_HandleTypeDef结构体变量并调用AD840X_Init初始化（见第59行）
- * 5. 然后就可以自由使用AD840X_Write函数了(会自动检测是否支持DMA)
+ * 5. 然后就可以自由使用AD840X_Write函数了
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "dma.h"
 #include "spi.h"
 #include "gpio.h"
 
@@ -102,7 +101,6 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 

@@ -140,22 +140,6 @@ void AD840X_Write(AD840X_HandleTypeDef *hdev, uint8_t channel, uint8_t value)
 }
 
 /**
- * @brief  SPI DMA传输完成回调函数
- * @note   此函数会被HAL库自动调用，不需要用户手动调用
- * @param  hspi: SPI句柄指针
- * @retval None
- */
-void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
-{
-    /* 检查是否有正在使用DMA的设备，且SPI实例匹配 */
-    if (current_dma_device != NULL && hspi == current_dma_device->hspi)
-    {
-        /* 传输完成后，拉高CS引脚，锁存数据 */
-        HAL_GPIO_WritePin(current_dma_device->cs_port, current_dma_device->cs_pin, GPIO_PIN_SET);
-    }
-}
-
-/**
  * @brief  通过RS引脚复位所有通道到中间值
  * @param  hdev: AD840X设备句柄指针
  * @note   时序需满足tRS≥50ns（Page10 Table4）

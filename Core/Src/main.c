@@ -19,18 +19,17 @@
  * AD840X系列数字电位器驱动库
  * 雪豹  编写  github.com/2827700630
  * 编码UTF-8
- * 说明在AD840X.h文件中
+ * 说明在AD840X.h文件中，也可以看readme.md
  * 如果您需要在其他项目中使用这个AD840X驱动，只需：
- * 1. 在STM32CubeMX中配置SPI外设和GPIO引脚，SPI开启DMA的方法见AD840X.h文件
+ * 1. 在STM32CubeMX中配置SPI外设和GPIO引脚
  * 2. 拷贝AD840X.c和AD840X.h两个文件
  * 3. 在您的代码中包含AD840X.h头文件（见第38行）
  * 4. 创建AD840X_HandleTypeDef结构体变量并调用AD840X_Init初始化（见第59行）
- * 5. 然后就可以自由使用AD840X_Write函数了(会自动检测是否支持DMA)
+ * 5. 然后就可以自由使用AD840X_Write函数了
  */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "dma.h"
 #include "spi.h"
 #include "gpio.h"
 
@@ -78,6 +77,7 @@ void SystemClock_Config(void);
  */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -100,26 +100,24 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); // 打开LED指示灯
   // 初始化第一个AD840X数字电位器，使用完整引脚配置
-  AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS1_GPIO_Port, AD840X_CS1_Pin);
-  AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin,
-                     AD840X_RS1_GPIO_Port, AD840X_RS1_Pin);
+  AD840X_Init(&hAD840X_1, &hspi1, AD840X_CS1_GPIO_Port, AD840X_CS1_Pin);                                          // 必要配置
+  AD840X_Config_Pins(&hAD840X_1, AD840X_SHDN1_GPIO_Port, AD840X_SHDN1_Pin, AD840X_RS1_GPIO_Port, AD840X_RS1_Pin); // 可选配置
 
   // 复位所有设备的通道到中间值（128）
   AD840X_Reset(&hAD840X_1); // 复位
   HAL_Delay(1000);
 
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET); // 关闭LED指示灯
-  // 设置初始值 - 使用新的函数，更直观地按电阻值设置
 
-  AD840X_Write(&hAD840X_1, AD840X_CHANNEL_2, 128); // 设置为中间值（128）
+  // 设置初始值 - 使用新的函数，更直观地按电阻值设置
+  AD840X_Write(&hAD840X_1, AD840X_CHANNEL_1, 128); // 设置为中间值（128）
   // 设置初始电阻值（更直观，直接使用欧姆值）
-  AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_2, 100.0f, AD840X_10K_OHM); // 设置为100Ω,程序会计算对应最近的值
+  AD840X_WriteResistance(&hAD840X_1, AD840X_CHANNEL_1, 100.0f, AD840X_10K_OHM); // 设置为100Ω,程序会计算对应最近的值
 
   HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET); // 打开LED指示灯
   AD840X_Shutdown(&hAD840X_1, 0);                          // 将设备1设置为低功耗模式
@@ -138,7 +136,7 @@ int main(void)
   {
     // 控制LED指示灯闪烁
     HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-    AD840X_WriteRatio(&hAD840X_1, AD840X_CHANNEL_2, rate);
+    AD840X_WriteRatio(&hAD840X_1, AD840X_CHANNEL_1, rate);
     rate = rate + 0.1f;
     if (rate > 1.0f)
     {
